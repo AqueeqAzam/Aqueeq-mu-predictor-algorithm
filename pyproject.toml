@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mu-predictor"
+version = "4.0.0"
+authors = [{name = "Azeeq Azam", email = "txwort@gmail.com"}]
+description = "μ-Predictor Algorithm for Infinite Geometric Nested Radicals"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
+dependencies = [
+    "numpy>=1.19.0",
+    "matplotlib>=3.3.0",
+]
