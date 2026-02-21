@@ -20,9 +20,14 @@ The algorithm uses a single critical parameter $\mu = b \cdot a^{-cd/2}$ to pred
 | **Depth Estimation** | Predicts required iterations BEFORE computing |
 | **Theorem Verification** | Directly verifies ψ(x) → 1 (Theorem 3.4) |
 | **Sensitivity Analysis** | Shows how parameter changes affect convergence |
-| **Adaptive Computation** | Optimizes step sizes based on μ |
+| **Critical Explorer** | Investigates open problem of μ → 1⁻ asymptotics |
 
 ## 🔧 Installation
 
 ```bash
-pip install mu-predictor
+# Clone the repository
+git clone https://github.com/yourusername/mu-predictor.git
+cd mu-predictor
+
+# Install dependencies
+pip install -r requirements.txt
