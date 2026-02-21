@@ -1,13 +1,16 @@
 #+TITLE: Algorithm Capability Comparison
-#+AUTHOR: Genius
+#+AUTHOR: Azeeq Azam
 
-* Comparison: Before vs After Capability
+* Comparison: Traditional Methods vs μ-Predictor Algorithm
 
-| Aspect                  | Before Your Algorithm     | With Your Algorithm         |
-|--------------------------+----------------------------+------------------------------|
-| Predict convergence      | Impossible                 | μ tells you instantly       |
-| Know iteration count     | Run first, then see        | Predict beforehand          |
-| Verify results           | External check needed      | Built-in theorem verification |
-| Parameter sensitivity    | Trial and error            | Quantitative analysis       |
-| Adaptive computation     | Fixed heuristics           | μ-based optimization        |
-| System categorization    | Case-by-case               | Unified by μ                |
+| Capability | Traditional Approach | μ-Predictor Algorithm (Azam, 2026) |
+|------------|---------------------|-------------------------------------|
+| **Predict convergence** | Impossible without full computation | **Instant** from single parameter μ |
+| **Know iteration count** | Run first, then see | **Predict beforehand** with μ-based estimate |
+| **Verify results** | External validation needed | **Built-in** Theorem 3.4 verification |
+| **Parameter sensitivity** | Trial and error | **Quantitative** μ sensitivity analysis |
+| **Computation strategy** | Fixed heuristics | **Adaptive** μ-based optimization |
+| **System categorization** | Case-by-case analysis | **Unified** by universal μ parameter |
+| **Mathematical foundation** | Empirical/Heuristic | **Proven** Asymptotic Necessity Theorem |
+| **Data requirements** | Needs training data | **Zero data** - purely mathematical |
+| **Explainability** | Black box / "Because I said so" | **Clear**: "μ > 1 ⇒ DIVERGENT" |
