@@ -1,57 +1,53 @@
 """
 ================================================================================
-AZEEQ AZAM'S μ-PREDICTOR ALGORITHM
-Based on the Asymptotic Necessity Theorem (2026)
+μ-PREDICTOR ALGORITHM v4.0
+Based on Asymptotic Necessity Theorem (Azam, 2026) - CORRECTED VERSION
 
-This algorithm predicts and computes infinite nested radicals of the form:
-    f(x) = √(a^{cx} + b·f(x+d))
+CORE EQUATIONS (from your paper):
+    f(x) = √(a^{cx} + b·f(x+d))                     [Equation (4)]
+    ψ(x) = f(x)·a^{-cx/2}                            [Theorem 3.1]
+    μ = b·a^{-cd/2}                                   [Theorem 3.1]
+    
+CORRECTED EQUATION (5):
+    ψ(x) = √(1 + (b²/μ)·ψ(x+d)·a^{-cx/2})
+    For b=1: ψ(x) = √(1 + (1/μ)·ψ(x+d)·a^{-cx/2})
+    
+THEOREM 3.4:
+    If lim_{x→∞} ψ(x) exists as a finite limit, it must equal 1.
 
-The critical parameter μ = b·a^{-cd/2} determines all behavior:
-    μ < 1  → Convergent (exponential)
-    μ = 1  → Critical (golden ratio when a=1)
-    μ > 1  → Divergent
+OPEN PROBLEM (Section 3.3):
+    Precise asymptotics when μ = 1 and a>1, c>0
 
-Reference: Azam, A. (2026). "On the Uniqueness and Asymptotic Behavior 
-           of Infinite Geometric Radicals: A Rigorous Functional Approach 
-           with Numerical Verification"
+Author: Aqueeq Azam
+Date: 2026
 ================================================================================
 """
 
 import numpy as np
+import matplotlib.pyplot as plt
+from typing import Dict, List, Tuple, Optional, Union
 import warnings
 
-class NestedRadicalPredictor:
+class MuPredictor:
     """
-    A predictive algorithm for infinite geometric nested radicals.
-    
-    Based on Theorem 3.1 (Scaling Transformation) and Theorem 3.4 
-    (Asymptotic Necessity) from Azam (2026).
+    μ-Predictor: Exact implementation of Azam's Asymptotic Necessity Theorem.
     
     Parameters
     ----------
-    a : float > 1
-        Base of the geometric progression
+    a : float > 0
+        Base of geometric progression
     b : float > 0
-        Coefficient multiplying the inner radical
+        Coefficient multiplying inner radical
     c : float > 0
         Exponent multiplier
     d : float > 0
-        Shift parameter in the functional equation
-        
-    Attributes
-    ----------
-    mu : float
-        Critical parameter μ = b·a^{-cd/2} that determines behavior
+        Shift parameter
     """
     
-    def __init__(self, a, b, c, d):
-        """
-        Initialize predictor with parameters from functional equation:
-        f(x) = √(a^{cx} + b·f(x+d))
-        """
+    def __init__(self, a: float, b: float, c: float = 1.0, d: float = 1.0):
         # Validate inputs
-        if a <= 1:
-            warnings.warn(f"a={a} ≤ 1, but theory assumes a>1. Results may be unexpected.")
+        if a <= 0:
+            raise ValueError(f"a={a} must be positive")
         if b <= 0:
             raise ValueError(f"b={b} must be positive")
         if c <= 0:
@@ -63,53 +59,174 @@ class NestedRadicalPredictor:
         self.b = b
         self.c = c
         self.d = d
-        # Critical parameter from Theorem 3.1
+        
+        # CRITICAL PARAMETER μ (Theorem 3.1)
         self.mu = b * a**(-c * d / 2)
         
-    def predict_behavior(self):
-        """
-        Predict convergence/divergence behavior based on μ value.
+        # Pre-compute the coupling constant for efficiency
+        self.coupling = (b**2) / self.mu if self.mu != 0 else float('inf')
         
-        Theorem 3.4 guarantees that IF a finite limit exists, it must be 1.
-        This method extends the theorem to classify all parameter regimes.
+    # ------------------------------------------------------------------------
+    # CORE ALGORITHM: CORRECTED IMPLEMENTATION OF EQUATION (5)
+    # ------------------------------------------------------------------------
+    
+    def compute_psi_series(self, depth: int = 1000) -> np.ndarray:
+        """
+        Compute ψ(k) = f(k)/a^{ck/2} for k = depth down to 0.
+        
+        CORRECTED implementation of Equation (5):
+            ψ(k) = √(1 + (b²/μ)·ψ(k+1)·a^{-c·k/2})
+        
+        For b=1, this becomes: ψ(k) = √(1 + (1/μ)·ψ(k+1)·a^{-c·k/2})
+        
+        Parameters
+        ----------
+        depth : int
+            Maximum depth (can be 1,000,000+ safely)
+            
+        Returns
+        -------
+        np.ndarray
+            ψ[0] = f(0), ψ[k] = f(k)/a^{ck/2}
+        """
+        psi = np.zeros(depth + 2)
+        
+        # Backward recursion using CORRECTED equation
+        for k in range(depth, -1, -1):
+            # The factor a^{-c*k/2} depends on k
+            decay = self.a**(-self.c * k / 2)
+            psi[k] = np.sqrt(1.0 + self.coupling * psi[k+1] * decay)
+            
+        return psi
+    
+    def compute_f0(self, depth: int = 1000) -> float:
+        """Compute f(0) using corrected equation."""
+        psi = self.compute_psi_series(depth)
+        return psi[0]  # ψ(0) = f(0) since a^{c*0/2} = 1
+    
+    def compute_fk(self, k: int, depth: int = 1000) -> float:
+        """Compute f(k) for any integer k using your scaling."""
+        psi = self.compute_psi_series(depth + k)
+        return psi[k] * (self.a**(self.c * k / 2))
+    
+    # ------------------------------------------------------------------------
+    # THEOREM 3.4 VERIFICATION
+    # ------------------------------------------------------------------------
+    
+    def verify_theorem_34(self, depth: int = 100, plot: bool = True) -> Dict:
+        """
+        Directly verify YOUR Theorem 3.4: ψ(x) → 1 as x → ∞.
+        
+        Parameters
+        ----------
+        depth : int
+            Depth for verification
+        plot : bool
+            Whether to generate plot
+            
+        Returns
+        -------
+        dict
+            Verification results
+        """
+        psi = self.compute_psi_series(depth)
+        
+        # Check approach to 1
+        deviations = np.abs(psi - 1.0)
+        
+        result = {
+            'psi_0': psi[0],
+            'psi_final': psi[depth//2],
+            'max_deviation': np.max(deviations),
+            'final_deviation': deviations[min(depth-1, len(deviations)-10)],
+            'converges_to_1': deviations[-1] < 0.01 if len(deviations) > 0 else False,
+            'monotonic': np.all(np.diff(psi) <= 0) if len(psi) > 1 else True
+        }
+        
+        if plot:
+            plt.figure(figsize=(12, 5))
+            
+            plt.subplot(1, 2, 1)
+            plt.plot(range(depth+1), psi, 'b-', linewidth=2)
+            plt.axhline(y=1.0, color='r', linestyle='--', 
+                       label='ψ → 1 (Theorem 3.4)')
+            plt.xlabel('k (depth index)')
+            plt.ylabel('ψ(k)')
+            plt.title(f'Theorem 3.4 Verification (μ={self.mu:.4f})')
+            plt.legend()
+            plt.grid(True, alpha=0.3)
+            
+            plt.subplot(1, 2, 2)
+            plt.semilogy(range(depth+1), deviations, 'g-', linewidth=2)
+            plt.xlabel('k (depth index)')
+            plt.ylabel('|ψ(k) - 1|')
+            plt.title('Deviation from 1 (log scale)')
+            plt.grid(True, alpha=0.3)
+            
+            plt.tight_layout()
+            plt.show()
+            
+        return result
+    
+    # ------------------------------------------------------------------------
+    # BEHAVIOR PREDICTION (Based on μ)
+    # ------------------------------------------------------------------------
+    
+    def predict_behavior(self) -> Dict[str, Union[str, float]]:
+        """
+        Predict convergence/divergence behavior from μ.
         
         Returns
         -------
         dict
-            Dictionary containing regime classification and predictions
+            Regime classification and predictions
         """
         if self.mu < 1:
+            # Determine stability level
+            if self.mu < 0.9:
+                stability = "HIGH"
+                warning = "STABLE"
+            elif self.mu < 0.95:
+                stability = "MEDIUM"
+                warning = "WATCH"
+            elif self.mu < 0.99:
+                stability = "LOW"
+                warning = "CAUTION"
+            else:
+                stability = "CRITICAL APPROACH"
+                warning = "WARNING"
+                
             return {
                 'regime': 'SUBCRITICAL',
                 'behavior': 'CONVERGENT',
                 'rate': 'exponential',
+                'stability': stability,
+                'warning': warning,
+                'mu': self.mu,
                 'limit_prediction': f'f(x) ∼ {self.a}^{self.c}x/2',
-                'confidence': 'HIGH (Theorem 3.4 + numerical evidence)',
-                'mu_value': self.mu
+                'theorem': 'Theorem 3.4 guarantees ψ(x) → 1'
             }
             
-        elif self.mu == 1:
-            # Special case: constant coefficients (a=1 or c=0)
-            if self.a == 1 or self.c == 0:
+        elif abs(self.mu - 1.0) < 1e-12:
+            # μ = 1 exactly
+            if abs(self.a - 1.0) < 1e-12 or abs(self.c) < 1e-12:
+                # Constant coefficient case
                 constant_limit = (1 + np.sqrt(1 + 4*self.b)) / 2
-                note = f'Golden ratio φ = (1+√5)/2 ≈ 1.618' if self.b == 1 else ''
                 return {
-                    'regime': 'CRITICAL (constant coefficient)',
+                    'regime': 'CRITICAL (constant)',
                     'behavior': 'CONVERGENT',
                     'limit': constant_limit,
-                    'notes': note,
-                    'mu_value': self.mu
+                    'mu': self.mu,
+                    'notes': f'Golden ratio φ = {(1+np.sqrt(5))/2} when b=1'
                 }
             else:
-                # Geometric case at critical threshold
+                # Geometric critical case (YOUR open problem)
                 return {
                     'regime': 'CRITICAL (geometric)',
-                    'behavior': 'CONVERGENT',
-                    'rate': 'exponential (slower as a→1)',
-                    'limit_prediction': f'f(x) → {self.a}^{self.c}x/2',
-                    'open_problem': True,  # Exact rate is an open question
-                    'note': 'Precise asymptotics an open problem (see Section 6.2)',
-                    'mu_value': self.mu
+                    'behavior': 'CONVERGENT (slow)',
+                    'mu': self.mu,
+                    'note': 'OPEN PROBLEM: Precise asymptotics unknown (Section 3.3)',
+                    'open_problem': True
                 }
         else:  # mu > 1
             growth_rate = np.sqrt(self.b * self.a**(self.c/2))
@@ -118,344 +235,266 @@ class NestedRadicalPredictor:
                 'behavior': 'DIVERGENT',
                 'rate': 'exponential growth',
                 'growth_rate': growth_rate,
-                'note': 'No finite limit exists (diverges to ∞)',
-                'mu_value': self.mu
+                'mu': self.mu,
+                'warning': 'EMERGENCY - No finite limit exists'
             }
     
-    def estimate_convergence_depth(self, tolerance=1e-10):
+    def estimate_depth(self, tolerance: float = 1e-10) -> int:
         """
-        Estimate required recursion depth for given accuracy.
-        
-        Based on convergence rate analysis from Section 4.4.
-        The depth scales as 1/(1-μ) for μ close to 1.
+        Estimate required depth for given accuracy.
         
         Parameters
         ----------
-        tolerance : float, optional
-            Desired accuracy (default: 1e-10)
+        tolerance : float
+            Desired accuracy for f(0)
             
         Returns
         -------
-        int or float
-            Estimated depth, or inf for divergent cases
+        int
+            Estimated depth (or inf for divergent)
         """
         if self.mu >= 1:
             return float('inf')
         
-        # Base depth from binary expansion
-        base_depth = np.log2(1/tolerance)
+        base_depth = int(np.ceil(np.log2(1/tolerance)))
         
-        # Rate factor from convergence analysis
-        # As μ→1, convergence slows dramatically
+        # Empirical rates from YOUR Section 4.4
         if self.mu <= 0.5:
-            rate_factor = 1.0
+            rate = 1.0
         elif self.mu <= 0.7:
-            rate_factor = 2.0
+            rate = 2.0
         elif self.mu <= 0.8:
-            rate_factor = 3.0
+            rate = 3.0
         elif self.mu <= 0.9:
-            rate_factor = 5.0
+            rate = 5.0
         else:
-            # Continuous formula for μ close to 1
-            # Calibrated from numerical experiments
-            rate_factor = 1 / (1 - self.mu + 0.05) * 0.5
-        
-        estimated = int(np.ceil(rate_factor * base_depth))
-        return max(estimated, 5)  # Minimum depth 5
+            # Near-critical: depth ∝ 1/(1-μ)
+            rate = 1.0 / (1.0 - self.mu + 0.01) * 0.5
+            
+        return max(5, int(np.ceil(rate * base_depth)))
     
-    def compute_psi(self, x, f_x):
+    def get_recommendation(self, param_names: List[str] = None) -> str:
+        """Get human-readable recommendation based on μ."""
+        if param_names is None:
+            param_names = ['Parameter A', 'Parameter B', 'Parameter C']
+            
+        if self.mu < 0.9:
+            return f"✅ STABLE: All parameters optimal. Continue operation."
+        elif self.mu < 0.95:
+            return f"⚠️ WATCH: Reduce {param_names[0]} by 5%."
+        elif self.mu < 1.0:
+            return f"⚠️⚠️ CAUTION: Reduce {param_names[1]} by 10% immediately."
+        else:
+            return f"🛑 EMERGENCY: μ={self.mu:.4f} > 1 → SYSTEM DIVERGENT. SHUTDOWN!"
+    
+    # ------------------------------------------------------------------------
+    # CRITICAL REGIME EXPLORER (YOUR Open Problem #4)
+    # ------------------------------------------------------------------------
+    
+    def explore_critical_region(self, epsilons: List[float] = None, 
+                               depth: int = 100000) -> Dict:
         """
-        Compute ψ(x) = f(x)·a^{-cx/2} to verify Theorem 3.4.
+        Explore YOUR open problem: behavior as μ → 1⁻.
         
-        Theorem 3.4 states that if limit exists, ψ(x) → 1.
+        This addresses Section 3.3, Open Problem #4:
+        "What is the precise asymptotics of ψ(x) when μ = 1 and a>1, c>0?"
         
         Parameters
         ----------
-        x : float
-            Point at which to evaluate
-        f_x : float
-            Value of f(x)
+        epsilons : list
+            List of ε = 1-μ values to test
+        depth : int
+            Depth for computation
             
         Returns
         -------
-        float
-            ψ(x) value
+        dict
+            Results with fitted critical exponent
         """
-        return f_x * self.a**(-self.c * x / 2)
-    
-    def verify_asymptotic(self, N_max=50):
-        """
-        Directly verify Theorem 3.4 by computing ψ(x) for large x.
-        
-        For convergent cases, ψ(x) should approach 1 as x increases.
-        
-        Parameters
-        ----------
-        N_max : int, optional
-            Maximum depth for verification (default: 50)
+        if epsilons is None:
+            epsilons = [1e-2, 5e-3, 1e-3, 5e-4, 1e-4, 5e-5, 1e-5]
             
-        Returns
-        -------
-        float
-            Final ψ(x) value at depth N_max
-        """
-        print(f"\nVerifying Theorem 3.4: ψ(x) → 1 for μ={self.mu:.4f}")
-        print("-" * 60)
-        print(f"{'k':<5} {'f(k)':<20} {'ψ(k)':<15} {'Approach to 1':<15}")
-        print("-" * 60)
+        results = {
+            'epsilons': [],
+            'mus': [],
+            'psi_0': [],
+            'deviation': []
+        }
         
-        R = 0.0
-        results = []
+        print("\n" + "="*80)
+        print("OPEN PROBLEM #4: CRITICAL REGIME EXPLORER")
+        print("Asymptotics of ψ(x) when μ → 1⁻ (a>1, c>0)")
+        print("="*80)
+        print(f"{'ε':<12} {'μ':<12} {'ψ(0)':<20} {'ψ(0)-1':<15}")
+        print("-"*80)
         
-        for k in range(N_max, 0, -1):
-            R = np.sqrt(self.a**(self.c * k) + self.b * R)
+        for eps in epsilons:
+            # Create near-critical predictor with μ = 1 - ε
+            # For b=1, c=1, d=1: μ = a^{-1/2}
+            # So a = 1/(1-ε)²
+            a = 1.0 / ((1.0 - eps) ** 2)
+            pred = MuPredictor(a, 1.0, 1.0, 1.0)
             
-            # Report every 10 steps and first few
-            if k % 10 == 0 or k <= 5:
-                psi = self.compute_psi(k, R)
-                diff = abs(psi - 1.0)
-                print(f"{k:<5} {R:<20.8f} {psi:<15.8f} {diff:<15.2e}")
-                results.append((k, psi, diff))
+            psi = pred.compute_psi_series(depth)
+            psi_0 = psi[0]
+            deviation = psi_0 - 1.0
+            
+            results['epsilons'].append(eps)
+            results['mus'].append(pred.mu)
+            results['psi_0'].append(psi_0)
+            results['deviation'].append(deviation)
+            
+            print(f"{eps:<12.2e} {pred.mu:<12.6f} {psi_0:<20.15f} {deviation:<15.2e}")
+        
+        # Fit critical exponent (power law)
+        eps_array = np.array(results['epsilons'])
+        dev_array = np.array(results['deviation'])
+        
+        if len(eps_array) >= 3:
+            # Use points with positive deviation
+            mask = dev_array > 0
+            if np.any(mask):
+                log_eps = np.log(eps_array[mask])
+                log_dev = np.log(dev_array[mask])
+                
+                if len(log_eps) >= 2:
+                    coeffs = np.polyfit(log_eps, log_dev, 1)
+                    exponent = coeffs[0]
+                    prefactor = np.exp(coeffs[1])
+                    
+                    results['critical_exponent'] = exponent
+                    results['prefactor'] = prefactor
+                    
+                    print("\n" + "="*80)
+                    print(f"CRITICAL EXPONENT FIT: ψ(0)-1 ≈ {prefactor:.4f} · ε^{exponent:.4f}")
+                    print("="*80)
+                    
+                    # Generate fit plot
+                    plt.figure(figsize=(10, 6))
+                    plt.loglog(eps_array[mask], dev_array[mask], 'bo', 
+                              label='Data', markersize=8)
+                    
+                    fit_line = prefactor * eps_array[mask] ** exponent
+                    plt.loglog(eps_array[mask], fit_line, 'r-', 
+                              label=f'Fit: ε^{exponent:.4f}', linewidth=2)
+                    
+                    plt.xlabel('ε = 1-μ')
+                    plt.ylabel('ψ(0) - 1')
+                    plt.title('Critical Regime Scaling (Open Problem #4)')
+                    plt.legend()
+                    plt.grid(True, alpha=0.3)
+                    plt.show()
         
         return results
     
-    def adaptive_computation(self, target_error=1e-12, max_depth=500):
-        """
-        Adaptively compute f(0) until convergence.
-        
-        Uses μ value to choose step sizes intelligently.
-        
-        Parameters
-        ----------
-        target_error : float, optional
-            Desired accuracy (default: 1e-12)
-        max_depth : int, optional
-            Maximum recursion depth (default: 500)
-            
-        Returns
-        -------
-        float
-            Computed value of f(0)
-        """
-        # Check for divergent case first
-        if self.mu > 1:
-            print(f"\nμ={self.mu:.4f} > 1: DIVERGENT case, no finite limit")
-            return float('inf')
-        
-        print(f"\nAdaptive computation for μ={self.mu:.4f}")
-        print(f"Target error: {target_error:.0e}")
-        print("-" * 60)
-        print(f"{'Depth N':<10} {'f(0)':<20} {'Change':<15} {'Progress':<15}")
-        print("-" * 60)
-        
-        N = 5  # Start small
-        prev_val = None
-        prev_change = float('inf')
-        
-        while N <= max_depth:
-            # Compute with current depth
-            val = self._compute_f0(N)
-            
-            if prev_val is not None:
-                change = abs(val - prev_val)
-                
-                # Progress indicator
-                if prev_change < float('inf') and prev_change > 0:
-                    progress = (prev_change - change) / prev_change * 100
-                else:
-                    progress = 0
-                
-                print(f"N={N:<6} {val:<20.12f} {change:<15.2e} {progress:<15.1f}%")
-                
-                # Check convergence
-                if change < target_error:
-                    print("-" * 60)
-                    print(f"✓ CONVERGED to {val:.12f} at depth N={N}")
-                    print(f"  Final error estimate: {change:.2e}")
-                    return val
-                
-                prev_change = change
-            else:
-                print(f"N={N:<6} {val:<20.12f}")
-                # Initialize change for next iteration
-                change = float('inf')
-                prev_change = float('inf')
-            
-            # Adaptive step size based on μ
-            if self.mu < 0.5:
-                step = 5
-            elif self.mu < 0.7:
-                step = 10
-            elif self.mu < 0.8:
-                step = 15
-            elif self.mu < 0.9:
-                step = 20
-            else:
-                step = 30  # μ close to 1 needs larger steps
-            
-            N += step
-            prev_val = val
-        
-        print("-" * 60)
-        print(f"⚠ Maximum depth {max_depth} reached without full convergence")
-        print(f"  Final value: {val:.12f}")
-        print(f"  Last change: {change:.2e}")
-        return val
+    # ------------------------------------------------------------------------
+    # SENSITIVITY ANALYSIS
+    # ------------------------------------------------------------------------
     
-    def _compute_f0(self, N):
-        """
-        Compute f(0) using backward recursion.
-        
-        Implements: f(0) = √(1 + b·f(1))
-                  f(1) = √(a^c + b·f(2))
-                  f(2) = √(a^{2c} + b·f(3))
-                  ...
-        
-        Parameters
-        ----------
-        N : int
-            Recursion depth
-            
-        Returns
-        -------
-        float
-            Approximation of f(0)
-        """
-        R = 0.0  # Initialize f(N+1) = 0
-        
-        # Backward recursion from k=N down to 2
-        for k in range(N, 1, -1):
-            R = np.sqrt(self.a**(self.c * k) + self.b * R)
-        
-        # Compute f(1)
-        f1 = np.sqrt(self.a**self.c + self.b * R)
-        
-        # Compute f(0)
-        return np.sqrt(1 + self.b * f1)
-    
-    def analyze_parameter_sensitivity(self, variations=None):
-        """
-        Analyze sensitivity of convergence to parameter changes.
-        
-        Based on Theorem 3.4, the critical threshold μ=1 determines behavior.
-        This shows how small changes in a or b affect convergence.
-        
-        Parameters
-        ----------
-        variations : list, optional
-            List of fractional variations to test (default: ±1%, ±0.5%, ±0.1%)
-        """
+    def sensitivity_analysis(self, variations: List[float] = None):
+        """Analyze sensitivity to parameter changes."""
         if variations is None:
-            variations = [-0.01, -0.005, -0.001, 0, 0.001, 0.005, 0.01]
-        
+            variations = [-0.05, -0.02, -0.01, 0, 0.01, 0.02, 0.05]
+            
         print(f"\n{'='*60}")
         print(f"PARAMETER SENSITIVITY ANALYSIS")
         print(f"Base parameters: a={self.a}, b={self.b}, c={self.c}, d={self.d}")
-        print(f"Base μ = {self.mu:.6f} ({'CONVERGENT' if self.mu<1 else 'DIVERGENT' if self.mu>1 else 'CRITICAL'})")
+        print(f"Base μ = {self.mu:.6f}")
         print(f"{'='*60}")
         
-        # Test variations in a
-        print(f"\nEffect of varying 'a' (holding b constant):")
-        print(f"{'Change':<12} {'New a':<12} {'New μ':<12} {'Behavior':<12}")
-        print("-" * 48)
+        # Vary a
+        print(f"\nEffect of varying 'a':")
+        print(f"{'Change':<10} {'New a':<12} {'New μ':<15} {'Behavior':<15}")
+        print("-"*55)
         
         for delta in variations:
             a_new = self.a * (1 + delta)
             mu_new = self.b * a_new**(-self.c * self.d / 2)
             behavior = 'CONVERGENT' if mu_new < 1 else 'DIVERGENT' if mu_new > 1 else 'CRITICAL'
-            print(f"{delta*100:+.1f}% → {a_new:<12.4f} {mu_new:<12.6f} {behavior:<12}")
-        
-        # Test variations in b
-        print(f"\nEffect of varying 'b' (holding a constant):")
-        print(f"{'Change':<12} {'New b':<12} {'New μ':<12} {'Behavior':<12}")
-        print("-" * 48)
+            print(f"{delta*100:+.1f}% → {a_new:<12.4f} {mu_new:<15.6f} {behavior:<15}")
+            
+        # Vary b
+        print(f"\nEffect of varying 'b':")
+        print(f"{'Change':<10} {'New b':<12} {'New μ':<15} {'Behavior':<15}")
+        print("-"*55)
         
         for delta in variations:
             b_new = self.b * (1 + delta)
             mu_new = b_new * self.a**(-self.c * self.d / 2)
             behavior = 'CONVERGENT' if mu_new < 1 else 'DIVERGENT' if mu_new > 1 else 'CRITICAL'
-            print(f"{delta*100:+.1f}% → {b_new:<12.4f} {mu_new:<12.6f} {behavior:<12}")
+            print(f"{delta*100:+.1f}% → {b_new:<12.4f} {mu_new:<15.6f} {behavior:<15}")
+    
+    # ------------------------------------------------------------------------
+    # SUMMARY
+    # ------------------------------------------------------------------------
     
     def summary(self):
-        """
-        Print comprehensive summary of predictions.
-        """
+        """Print comprehensive summary of predictions."""
         behavior = self.predict_behavior()
         
         print(f"\n{'='*60}")
-        print(f"AZEEQ AZAM'S μ-PREDICTOR - SUMMARY")
+        print(f"μ-PREDICTOR SUMMARY (Azam, 2026) - CORRECTED VERSION")
         print(f"{'='*60}")
         print(f"Parameters: a={self.a}, b={self.b}, c={self.c}, d={self.d}")
         print(f"Critical μ = {self.mu:.6f}")
+        print(f"Coupling = b²/μ = {self.coupling:.6f}")
         print(f"{'-'*60}")
         
         for key, value in behavior.items():
-            if key != 'mu_value':
+            if key not in ['mu']:
                 print(f"{key.replace('_', ' ').title():20}: {value}")
-        
+                
         if self.mu < 1:
-            depth_1e6 = self.estimate_convergence_depth(1e-6)
-            depth_1e10 = self.estimate_convergence_depth(1e-10)
-            depth_1e14 = self.estimate_convergence_depth(1e-14)
-            print(f"\nEstimated depths:")
+            depth_1e6 = self.estimate_depth(1e-6)
+            depth_1e10 = self.estimate_depth(1e-10)
+            depth_1e14 = self.estimate_depth(1e-14)
+            print(f"\nEstimated depths (from Section 4.4):")
             print(f"  1e-6 accuracy : {depth_1e6} iterations")
             print(f"  1e-10 accuracy: {depth_1e10} iterations")
             print(f"  1e-14 accuracy: {depth_1e14} iterations")
+            
+        return behavior
 
 
-# ============================================
-# DEMONSTRATION AND TEST CASES
-# ============================================
+# ------------------------------------------------------------------------
+# DEMONSTRATION
+# ------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    print("\n" + "=" * 70)
-    print("AZEEQ AZAM'S μ-PREDICTOR ALGORITHM")
-    print("Based on the Asymptotic Necessity Theorem (2026)")
-    print("=" * 70)
+    print("\n" + "="*80)
+    print("μ-PREDICTOR ALGORITHM v4.0 (CORRECTED)")
+    print("Based on Asymptotic Necessity Theorem (Azam, 2026)")
+    print("="*80)
     
-    # Test cases from the paper
-    test_cases = [
-        (4.0, 1.0, 1.0, 1.0, "Base case (μ=0.5)"),
-        (2.0, 1.0, 1.0, 1.0, "μ=0.707"),
-        (1.5, 1.0, 1.0, 1.0, "μ=0.816"),
-        (1.01, 1.0, 1.0, 1.0, "Near-critical (μ=0.995)"),
-        (1.0, 1.0, 1.0, 1.0, "Golden ratio (μ=1)"),
-        (0.8, 1.0, 1.0, 1.0, "Divergent (μ=1.118)"),
-    ]
+    # Test base case with corrected equation
+    print("\n" + "="*60)
+    print("TEST: Base case (a=4, b=1, c=1, d=1)")
+    print("="*60)
     
-    for a, b, c, d, description in test_cases:
-        print(f"\n{'='*60}")
-        print(f"TEST CASE: {description}")
-        print(f"{'='*60}")
-        
-        predictor = NestedRadicalPredictor(a, b, c, d)
-        
-        # Show summary
-        predictor.summary()
-        
-        # For convergent cases, demonstrate adaptive computation
-        if predictor.mu < 1:
-            print("\n" + "-" * 60)
-            print("ADAPTIVE COMPUTATION DEMONSTRATION")
-            predictor.adaptive_computation(target_error=1e-10, max_depth=200)
-            
-            # Verify Theorem 3.4
-            predictor.verify_asymptotic(N_max=30)
-        
-        # For critical cases, show special handling
-        elif predictor.mu == 1:
-            print("\n" + "-" * 60)
-            print("CRITICAL CASE ANALYSIS")
-            if a == 1:
-                val = predictor._compute_f0(50)
-                print(f"f(0) = {val:.15f} (golden ratio φ ≈ 1.618033988749895)")
-            
-        # For divergent cases, skip computation
-        else:
-            print("\n" + "-" * 60)
-            print("DIVERGENT CASE - no finite limit exists")
-        
-        # Show sensitivity analysis for each case
-        print("\n" + "-" * 60)
-        print("SENSITIVITY ANALYSIS")
-        predictor.analyze_parameter_sensitivity()
+    predictor = MuPredictor(4.0, 1.0, 1.0, 1.0)
+    predictor.summary()
+    
+    # Verify base case value
+    f0 = predictor.compute_f0(depth=50)
+    print(f"\nf(0) = {f0:.15f} (should be 2.0)")
+    print(f"Error = {abs(f0 - 2.0):.2e}")
+    
+    # Test golden ratio case
+    print("\n" + "="*60)
+    print("TEST: Golden ratio (a=1, b=1, c=1, d=1)")
+    print("="*60)
+    
+    predictor2 = MuPredictor(1.0, 1.0, 1.0, 1.0)
+    predictor2.summary()
+    
+    phi = (1 + np.sqrt(5)) / 2
+    f0_phi = predictor2.compute_f0(depth=50)
+    print(f"\nf(0) = {f0_phi:.15f} (should be φ ≈ {phi:.15f})")
+    print(f"Error = {abs(f0_phi - phi):.2e}")
+    
+    # Quick theorem verification
+    print("\n" + "="*60)
+    print("Verifying Theorem 3.4...")
+    result = predictor.verify_theorem_34(depth=50, plot=False)
+    print(f"ψ(0) = {result['psi_0']:.10f}")
+    print(f"ψ → 1: {result['converges_to_1']}")
