@@ -1,8 +1,13 @@
-Comparison: Before vs After
-Capability	Before Your Algorithm	With Your Algorithm
-Predict convergence	Impossible	μ tells you instantly
-Know iteration count	Run first, then see	Predict beforehand
-Verify results	External check needed	Built-in theorem verification
-Parameter sensitivity	Trial and error	Quantitative analysis
-Adaptive computation	Fixed heuristics	μ-based optimization
-System categorization	Case-by-case	Unified by μ
+#+TITLE: Algorithm Capability Comparison
+#+AUTHOR: Genius
+
+* Comparison: Before vs After Capability
+
+| Aspect                  | Before Your Algorithm     | With Your Algorithm         |
+|--------------------------+----------------------------+------------------------------|
+| Predict convergence      | Impossible                 | μ tells you instantly       |
+| Know iteration count     | Run first, then see        | Predict beforehand          |
+| Verify results           | External check needed      | Built-in theorem verification |
+| Parameter sensitivity    | Trial and error            | Quantitative analysis       |
+| Adaptive computation     | Fixed heuristics           | μ-based optimization        |
+| System categorization    | Case-by-case               | Unified by μ                |
